@@ -171,27 +171,39 @@ function yas_init_option_overrides() {
                 return $configs['default'][$option_name];
             }
             
-            // No override — let YOURLS fall through to its normal DB lookup
-            return false;
+            // No override — let YOURLS use its normal DB/cache lookup
+            return yourls_shunt_default();
         } );
     }
 
-    // Intercept base site URL
+    // Intercept base site URL (constant-based, needs its own filter)
     yourls_add_filter( 'get_yourls_site', function( $url ) {
         $configs = yas_get_configurations();
         $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
-        
-        // 1. Host specific site URL override
         if (!empty($host) && isset($configs[$host]['siteurl']) && $configs[$host]['siteurl'] !== '') {
             return rtrim($configs[$host]['siteurl'], '/');
         }
-        // 2. Default profile site URL override
         elseif (isset($configs['default']['siteurl']) && $configs['default']['siteurl'] !== '') {
             return rtrim($configs['default']['siteurl'], '/');
         }
-        
         return $url;
     } );
+
+    // Core options that may be cached — use get_option_* (return-value filter) instead of shunt
+    $core_keys = ['site_name'];
+    foreach ( $core_keys as $core_key ) {
+        yourls_add_filter( 'get_option_' . $core_key, function( $value ) use ( $core_key ) {
+            $configs = yas_get_configurations();
+            $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
+            if (!empty($host) && isset($configs[$host][$core_key]) && $configs[$host][$core_key] !== '') {
+                return $configs[$host][$core_key];
+            }
+            elseif (isset($configs['default'][$core_key]) && $configs['default'][$core_key] !== '') {
+                return $configs['default'][$core_key];
+            }
+            return $value;
+        } );
+    }
 }
 
 // Setup Admin UI
