@@ -12,10 +12,8 @@ if ( !defined( 'YOURLS_ABSPATH' ) ) die();
 // Array of options we support configuring per-domain
 function dsb_get_supported_keys() {
     return yourls_apply_filters('dsb_supported_keys', [
-        'cf_ts_site_key' => 'Turnstile Site Key (Admin)',
-        'cf_ts_secret_key' => 'Turnstile Secret Key (Admin)',
-        'ps_site_key' => 'Turnstile Site Key (Public)',
-        'ps_secret_key' => 'Turnstile Secret Key (Public)',
+        'cf_ts_site_key' => 'Turnstile Site Key',
+        'cf_ts_secret_key' => 'Turnstile Secret Key',
         'ps_title' => 'Public Shortener Title',
         'ps_subtitle' => 'Public Shortener Subtitle',
         'ps_bg_start' => 'Public Shortener BG Start',
