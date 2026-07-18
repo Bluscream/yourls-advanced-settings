@@ -312,6 +312,9 @@ function dsb_admin_page() {
                         <table class="form-table <?php echo $group_class; ?>" style="width: 100%; border-collapse: collapse; border: 1px solid #ccd0d4; margin-top: 0; margin-bottom: 20px; border-top: none;">
                             <?php foreach ($keys as $key => $label): 
                                 $val = isset($active_values[$key]) ? $active_values[$key] : '';
+                                if (is_array($val) || is_object($val)) {
+                                    $val = json_encode($val);
+                                }
                                 $is_color = (strpos($key, 'ps_bg_') === 0 || strpos($key, 'ps_text_') === 0 || strpos($key, 'ps_accent') === 0);
                                 $type = ($key === 'cf_ts_secret_key' || $key === 'ps_secret_key') ? 'password' : ($is_color ? 'color' : 'text');
                                 
@@ -319,10 +322,19 @@ function dsb_admin_page() {
                                 $db_default_value = '';
                                 try {
                                     $db_default_value = $db->fetchValue("SELECT option_value FROM `$table` WHERE option_name = :key", ['key' => $key]);
-                                } catch (Exception $e) {}
+                                } catch (Throwable $e) {}
                                 if ($db_default_value === false || $db_default_value === null) {
                                     $db_default_value = '(Not set)';
+                                } else {
+                                    // If it's a serialized string, unserialize it to see if it's an array/object, then JSON format it for readability
+                                    $unserialized = @unserialize($db_default_value);
+                                    if ($unserialized !== false || $db_default_value === 'b:0;') {
+                                        if (is_array($unserialized) || is_object($unserialized)) {
+                                            $db_default_value = json_encode($unserialized);
+                                        }
+                                    }
                                 }
+                                $db_default_value_str = is_array($db_default_value) || is_object($db_default_value) ? json_encode($db_default_value) : (string)$db_default_value;
                             ?>
                                 <tr style="border-bottom: 1px solid #f0f0f1;">
                                     <th style="width: 250px; text-align: left; padding: 12px 15px; font-weight: 600; font-size: 13px;">
@@ -347,7 +359,7 @@ function dsb_admin_page() {
                                         
                                         <?php if ($active_domain !== 'default'): ?>
                                             <div style="font-size: 11px; color: #777; margin-top: 6px;">
-                                                Database Default: <strong style="color: #444; font-family: monospace;"><?php echo htmlspecialchars(strlen($db_default_value) > 80 ? substr($db_default_value, 0, 77) . '...' : $db_default_value); ?></strong>
+                                                Database Default: <strong style="color: #444; font-family: monospace;"><?php echo htmlspecialchars(strlen($db_default_value_str) > 80 ? substr($db_default_value_str, 0, 77) . '...' : $db_default_value_str); ?></strong>
                                             </div>
                                         <?php endif; ?>
                                     </td>
