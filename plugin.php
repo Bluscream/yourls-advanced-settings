@@ -187,6 +187,7 @@ function dsb_admin_page() {
     $table = YOURLS_DB_TABLE_OPTIONS;
     $configs = dsb_get_configurations();
     $grouped_keys = dsb_get_grouped_keys();
+    echo '<div class="notice notice-info"><p>Debug: Grouped Categories found: ' . implode(', ', array_keys($grouped_keys)) . '</p></div>';
     $supported_keys = dsb_get_supported_keys();
     $nonce = yourls_create_nonce('dsb_settings_nonce');
 
