@@ -173,12 +173,26 @@ function dsb_admin_page() {
             $domain = trim($_POST['domain_name']);
             if ($domain !== '') {
                 $domain = strtolower($domain);
-                $configs[$domain] = [];
-                foreach ($supported_keys as $key => $label) {
-                    $configs[$domain][$key] = isset($_POST[$key]) ? trim($_POST[$key]) : '';
+                if ($domain === 'default') {
+                    // Update standard YOURLS options table directly
+                    foreach ($supported_keys as $key => $label) {
+                        $val = isset($_POST[$key]) ? trim($_POST[$key]) : '';
+                        yourls_update_option($key, $val);
+                    }
+                    // Clean up default key from config profile override if it exists
+                    if (isset($configs['default'])) {
+                        unset($configs['default']);
+                        yourls_update_option('dsb_domain_profiles', $configs);
+                    }
+                    echo '<div class="updated"><p>Default settings saved directly to the database options successfully!</p></div>';
+                } else {
+                    $configs[$domain] = [];
+                    foreach ($supported_keys as $key => $label) {
+                        $configs[$domain][$key] = isset($_POST[$key]) ? trim($_POST[$key]) : '';
+                    }
+                    yourls_update_option('dsb_domain_profiles', $configs);
+                    echo '<div class="updated"><p>Profile for <strong>' . htmlspecialchars($domain) . '</strong> saved successfully!</p></div>';
                 }
-                yourls_update_option('dsb_domain_profiles', $configs);
-                echo '<div class="updated"><p>Profile for <strong>' . htmlspecialchars($domain) . '</strong> saved successfully!</p></div>';
             }
         } elseif ($_POST['dsb_action'] === 'delete') {
             $domain = trim($_POST['domain_name']);
@@ -191,10 +205,19 @@ function dsb_admin_page() {
     }
 
     $active_domain = isset($_GET['edit_domain']) ? trim($_GET['edit_domain']) : 'default';
-    if (!isset($configs[$active_domain])) {
+    if ($active_domain !== 'default' && !isset($configs[$active_domain])) {
         $active_domain = 'default';
     }
-    $active_values = $configs[$active_domain];
+
+    // Load active values: Default profile reads directly from YOURLS options table
+    $active_values = [];
+    foreach ($supported_keys as $key => $label) {
+        if ($active_domain === 'default') {
+            $active_values[$key] = yourls_get_option($key);
+        } else {
+            $active_values[$key] = isset($configs[$active_domain][$key]) ? $configs[$active_domain][$key] : '';
+        }
+    }
 
     ?>
     <div id="wrap" style="max-width: 98%; width: 98%;">
@@ -235,8 +258,8 @@ function dsb_admin_page() {
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccd0d4; padding-bottom: 10px; margin-bottom: 20px;">
                     <h3 style="margin: 0; font-size: 16px;">Editing Profile: <span style="color:#0073aa;"><?php echo htmlspecialchars($active_domain); ?></span></h3>
                     <div style="display: flex; gap: 10px;">
-                        <button type="button" class="button" onclick="dsbResetProfile();" style="color: #b32d2e; border-color: #b32d2e;">Reset All Overrides</button>
                         <?php if ($active_domain !== 'default'): ?>
+                            <button type="button" class="button" onclick="dsbResetProfile();" style="color: #b32d2e; border-color: #b32d2e;">Reset All Overrides</button>
                             <form method="post" onsubmit="return confirm('Delete this domain profile?');" style="margin: 0;">
                                 <input type="hidden" name="nonce" value="<?php echo $nonce; ?>">
                                 <input type="hidden" name="dsb_action" value="delete">
@@ -257,7 +280,9 @@ function dsb_admin_page() {
                     ?>
                         <div style="display: flex; justify-content: space-between; align-items: center; background: #f7f7f7; padding: 8px 12px; margin-top: 25px; border: 1px solid #ccd0d4; border-bottom: none; border-radius: 4px 4px 0 0;">
                             <h3 style="margin: 0; font-size: 14px;"><?php echo htmlspecialchars($group_name); ?></h3>
-                            <button type="button" class="button button-secondary" onclick="dsbResetGroup('<?php echo $group_class; ?>');" style="font-size: 11px; padding: 2px 8px; height: auto; line-height: normal;">Reset Group</button>
+                            <?php if ($active_domain !== 'default'): ?>
+                                <button type="button" class="button button-secondary" onclick="dsbResetGroup('<?php echo $group_class; ?>');" style="font-size: 11px; padding: 2px 8px; height: auto; line-height: normal;">Reset Group Overrides</button>
+                            <?php endif; ?>
                         </div>
                         <table class="form-table <?php echo $group_class; ?>" style="width: 100%; border-collapse: collapse; border: 1px solid #ccd0d4; margin-top: 0; margin-bottom: 20px; border-top: none;">
                             <?php foreach ($keys as $key => $label): 
@@ -266,7 +291,6 @@ function dsb_admin_page() {
                                 $type = ($key === 'cf_ts_secret_key' || $key === 'ps_secret_key') ? 'password' : ($is_color ? 'color' : 'text');
                                 
                                 // Fetch raw option value from core YOURLS db (bypassing interceptor filter)
-                                global $wpdb; // Note: YOURLS uses PDO via yourls_get_db, but we can query it directly
                                 $db_default_value = '';
                                 try {
                                     $db_default_value = $db->fetchValue("SELECT option_value FROM `$table` WHERE option_name = :key", ['key' => $key]);
@@ -291,12 +315,16 @@ function dsb_admin_page() {
                                                 <input type="<?php echo $type; ?>" id="<?php echo $key; ?>" name="<?php echo $key; ?>" value="<?php echo htmlspecialchars($val); ?>" size="50" style="padding: 5px;">
                                             <?php endif; ?>
                                             
-                                            <button type="button" class="button" onclick="dsbResetField('<?php echo $key; ?>');" title="Reset this override" style="padding: 0 8px; font-size: 11px; height: 28px; line-height: 28px;">&times; Clear</button>
+                                            <?php if ($active_domain !== 'default'): ?>
+                                                <button type="button" class="button" onclick="dsbResetField('<?php echo $key; ?>');" title="Reset this override" style="padding: 0 8px; font-size: 11px; height: 28px; line-height: 28px;">&times; Clear</button>
+                                            <?php endif; ?>
                                         </div>
                                         
-                                        <div style="font-size: 11px; color: #777; margin-top: 6px;">
-                                            Database Default: <strong style="color: #444; font-family: monospace;"><?php echo htmlspecialchars(strlen($db_default_value) > 80 ? substr($db_default_value, 0, 77) . '...' : $db_default_value); ?></strong>
-                                        </div>
+                                        <?php if ($active_domain !== 'default'): ?>
+                                            <div style="font-size: 11px; color: #777; margin-top: 6px;">
+                                                Database Default: <strong style="color: #444; font-family: monospace;"><?php echo htmlspecialchars(strlen($db_default_value) > 80 ? substr($db_default_value, 0, 77) . '...' : $db_default_value); ?></strong>
+                                            </div>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
