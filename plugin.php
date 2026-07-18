@@ -100,12 +100,14 @@ function dsb_get_grouped_keys() {
     }
 
     // 2. Also query options table for any dangling options not mapped by active plugins
-    $db = yourls_get_db();
-    $table = YOURLS_DB_TABLE_OPTIONS;
     $db_options = [];
     try {
-        $db_options = $db->fetchCol("SELECT option_name FROM `$table` ORDER BY option_name ASC");
-    } catch (Exception $e) {}
+        $db = yourls_get_db();
+        $table = defined('YOURLS_DB_TABLE_OPTIONS') ? YOURLS_DB_TABLE_OPTIONS : 'yourls_options';
+        if (is_object($db)) {
+            $db_options = $db->fetchCol("SELECT option_name FROM `$table` ORDER BY option_name ASC");
+        }
+    } catch (Throwable $e) {}
 
     $mapped_keys = [];
     foreach ($groups as $g => $keys) {
