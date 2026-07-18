@@ -50,11 +50,16 @@ function yas_scan_directory_for_options($dir, $ignored_keys) {
 
 // Array of options grouped by plugin/theme area dynamically parsed from the database and active plugins
 function yas_get_grouped_keys() {
-    // Cache bypassed during active development/configuration checks
-    $groups = [];
+    // Initialize with Core overrides
+    $groups = [
+        'YOURLS Core' => [
+            'siteurl'   => 'Base Site URL (Redirection Host)',
+            'site_name' => 'Site Title Name',
+        ]
+    ];
     $ignored_keys = [
-        'active_plugins', 'core_version', 'db_version', 'site_name', 'site_url', 
-        'stats_clicks', 'stats_shorturls', 'next_id', 'plugins_site_url', 
+        'active_plugins', 'core_version', 'db_version',
+        'stats_clicks', 'stats_shorturls', 'next_id', 'plugins_site_url',
         'registered_plugins', 'dsb_domain_profiles', 'ps_domain_settings',
         'nonce_key', 'cookie_key', 'dsb_cached_grouped_keys'
     ];
