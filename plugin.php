@@ -42,70 +42,27 @@ function dsb_get_configurations() {
     return $configs;
 }
 
-// Dynamically intercept options on get_option using wildcard ArrayObject filter registry
-class DomainSettingsBridgeArray extends ArrayObject {
-    private function get_override_val($key) {
-        if (strpos($key, 'shunt_option_') === 0) {
-            $option_name = substr($key, 13);
-            $supported_keys = dsb_get_supported_keys();
-
-            if (array_key_exists($option_name, $supported_keys)) {
-                $configs = dsb_get_configurations();
-                $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
-                
-                // 1. Resolve host specific setting
-                if (!empty($host) && isset($configs[$host][$option_name]) && $configs[$host][$option_name] !== '') {
-                    return $configs[$host][$option_name];
-                }
-                // 2. Resolve default profile setting
-                elseif (isset($configs['default'][$option_name]) && $configs['default'][$option_name] !== '') {
-                    return $configs['default'][$option_name];
-                }
-            }
-        }
-        return null;
-    }
-
-    public function offsetExists($key): bool {
-        $exists = parent::offsetExists($key);
-        if ($exists) {
-            return true;
-        }
-        return ($this->get_override_val($key) !== null);
-    }
-
-    #[\ReturnTypeWillChange]
-    public function offsetGet($key) {
-        $resolved_val = $this->get_override_val($key);
-        if ($resolved_val !== null) {
-            $bridge_filter = [
-                10 => [
-                    'dsb_override' => [
-                        'function' => function($value) use ($resolved_val) {
-                            return $resolved_val;
-                        },
-                        'accepted_args' => 1,
-                        'type' => 'filter'
-                    ]
-                ]
-            ];
+// Dynamically intercept options on get_option using standard YOURLS filter hooks
+yourls_add_action( 'plugins_loaded', 'dsb_init_option_overrides', 1 );
+function dsb_init_option_overrides() {
+    $supported_keys = dsb_get_supported_keys();
+    foreach ( array_keys($supported_keys) as $option_name ) {
+        yourls_add_filter( 'shunt_option_' . $option_name, function( $value ) use ( $option_name ) {
+            $configs = dsb_get_configurations();
+            $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
             
-            $val = parent::offsetExists($key) ? parent::offsetGet($key) : null;
-            return is_array($val) ? $bridge_filter + $val : $bridge_filter;
-        }
-        
-        return parent::offsetExists($key) ? parent::offsetGet($key) : null;
+            // 1. Resolve host specific setting
+            if (!empty($host) && isset($configs[$host][$option_name]) && $configs[$host][$option_name] !== '') {
+                return $configs[$host][$option_name];
+            }
+            // 2. Resolve default profile setting
+            elseif (isset($configs['default'][$option_name]) && $configs['default'][$option_name] !== '') {
+                return $configs['default'][$option_name];
+            }
+            
+            return yourls_shunt_default();
+        } );
     }
-}
-
-// Initialize the filter interceptor registry
-global $yourls_filters;
-if (is_array($yourls_filters)) {
-    $yourls_filters = new DomainSettingsBridgeArray($yourls_filters);
-} elseif ($yourls_filters instanceof ArrayObject) {
-    $yourls_filters = new DomainSettingsBridgeArray($yourls_filters->getArrayCopy());
-} else {
-    $yourls_filters = new DomainSettingsBridgeArray();
 }
 
 // Setup Admin UI
