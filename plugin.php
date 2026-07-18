@@ -19,6 +19,7 @@ function dsb_clear_options_cache() {
 // Helper to recursively scan a folder for PHP files containing yourls_get_option/yourls_update_option calls
 function dsb_scan_directory_for_options($dir, $ignored_keys) {
     $option_keys = [];
+    error_log("DSB debug: scanning dir: " . $dir . " - is_dir: " . (is_dir($dir) ? 'yes' : 'no'));
     if (!is_dir($dir)) {
         return $option_keys;
     }
@@ -29,6 +30,7 @@ function dsb_scan_directory_for_options($dir, $ignored_keys) {
 
     foreach ($files as $file) {
         if ($file->getExtension() === 'php') {
+            error_log("DSB debug: reading PHP file: " . $file->getPathname());
             $content = @file_get_contents($file->getPathname());
             if ($content === false) continue;
 
@@ -37,6 +39,7 @@ function dsb_scan_directory_for_options($dir, $ignored_keys) {
                 if (isset($matches[1])) {
                     foreach ($matches[1] as $key) {
                         if (!in_array($key, $ignored_keys)) {
+                            error_log("DSB debug: found option key match: " . $key);
                             $option_keys[] = $key;
                         }
                     }
@@ -50,12 +53,7 @@ function dsb_scan_directory_for_options($dir, $ignored_keys) {
 
 // Array of options grouped by plugin/theme area dynamically parsed from the database and active plugins
 function dsb_get_grouped_keys() {
-    // Try to get cached mapping first to keep admin dashboard fast
-    $cached = yourls_get_option('dsb_cached_grouped_keys');
-    if (is_array($cached) && !empty($cached)) {
-        return $cached;
-    }
-
+    // Cache bypassed during active development/configuration checks
     $groups = [];
     $ignored_keys = [
         'active_plugins', 'core_version', 'db_version', 'site_name', 'site_url', 
@@ -66,9 +64,11 @@ function dsb_get_grouped_keys() {
 
     // 1. Scan active plugins
     $active_plugins = yourls_get_option('active_plugins');
+    error_log("DSB debug: active plugins count: " . (is_array($active_plugins) ? count($active_plugins) : 0));
     if (is_array($active_plugins)) {
         foreach ($active_plugins as $plugin_rel_path) {
             $plugin_file = YOURLS_PLUGINDIR . '/' . $plugin_rel_path;
+            error_log("DSB debug: scanning file: " . $plugin_file . " - exists: " . (file_exists($plugin_file) ? 'yes' : 'no'));
             if (!file_exists($plugin_file)) {
                 continue;
             }
