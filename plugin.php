@@ -3,32 +3,60 @@
 Plugin Name: Domain Settings Bridge
 Plugin URI: https://github.com/yourls/domain-settings-bridge
 Description: A centralized manager that allows any plugin setting to be overridden per domain, with a fallback default profile.
-Version: 1.0
+Version: 1.1
 Author: Antigravity.AI
 */
 
 if ( !defined( 'YOURLS_ABSPATH' ) ) die();
 
-// Array of options we support configuring per-domain
+// Array of options grouped by plugin/theme area
+function dsb_get_grouped_keys() {
+    $default_groups = [
+        'Cloudflare Turnstile' => [
+            'cf_ts_site_key'   => 'Turnstile Site Key',
+            'cf_ts_secret_key' => 'Turnstile Secret Key',
+        ],
+        'Public Shortener' => [
+            'ps_title'          => 'Page Title',
+            'ps_subtitle'       => 'Page Subtitle',
+            'ps_bg_start'       => 'Background Gradient Start',
+            'ps_bg_end'         => 'Background Gradient End',
+            'ps_text_primary'   => 'Primary Text Color',
+            'ps_text_secondary' => 'Secondary Text Color',
+            'ps_accent'         => 'Accent Color (Button)',
+            'ps_accent_hover'   => 'Accent Hover Color',
+        ],
+        'Google Safe Browsing' => [
+            'ozh_yourls_gsb' => 'Google Safe Browsing API Key',
+        ],
+        'YouTube Title Fix' => [
+            'youtube_title_fix_api_key' => 'YouTube Data API Key',
+        ],
+        'YOURLS Fallback URL' => [
+            'fallback_url' => 'Fallback URL',
+        ],
+        'Random ShortURLs' => [
+            'random_shorturls_length' => 'Random Keyword Length',
+        ],
+        'YOURLS LogoSuite' => [
+            'logo_suite_image_url'    => 'Branding Logo URL',
+            'logo_suite_image_alt'    => 'Branding Logo ALT',
+            'logo_suite_image_title'  => 'Branding Logo Title',
+            'logo_suite_custom_title' => 'Custom Admin Page Title',
+        ]
+    ];
+    return yourls_apply_filters( 'dsb_grouped_keys', $default_groups );
+}
+
+// Flattened list of all supported option keys
 function dsb_get_supported_keys() {
-    return yourls_apply_filters('dsb_supported_keys', [
-        'cf_ts_site_key' => 'Turnstile Site Key',
-        'cf_ts_secret_key' => 'Turnstile Secret Key',
-        'ps_title' => 'Public Shortener Title',
-        'ps_subtitle' => 'Public Shortener Subtitle',
-        'ps_bg_start' => 'Public Shortener BG Start',
-        'ps_bg_end' => 'Public Shortener BG End',
-        'ps_text_primary' => 'Public Shortener Text Primary',
-        'ps_text_secondary' => 'Public Shortener Text Secondary',
-        'ps_accent' => 'Public Shortener Accent',
-        'ps_accent_hover' => 'Public Shortener Accent Hover',
-        'ozh_yourls_gsb' => 'Google Safe Browsing API Key',
-        'youtube_title_fix_api_key' => 'YouTube Data API Key',
-        'fallback_url' => 'Fallback URL',
-        'random_shorturls_length' => 'Random URL Length',
-        'logo_suite_image_url' => 'Logo Suite URL',
-        'logo_suite_custom_title' => 'Logo Suite Title',
-    ]);
+    $flat = [];
+    foreach ( dsb_get_grouped_keys() as $group => $keys ) {
+        foreach ( $keys as $key => $label ) {
+            $flat[$key] = $label;
+        }
+    }
+    return $flat;
 }
 
 // Get configurations array
@@ -71,6 +99,7 @@ function dsb_admin_init() {
 
 function dsb_admin_page() {
     $configs = dsb_get_configurations();
+    $grouped_keys = dsb_get_grouped_keys();
     $supported_keys = dsb_get_supported_keys();
     $nonce = yourls_create_nonce('dsb_settings_nonce');
 
@@ -157,27 +186,30 @@ function dsb_admin_page() {
                     <input type="hidden" name="dsb_action" value="save">
                     <input type="hidden" name="domain_name" value="<?php echo htmlspecialchars($active_domain); ?>">
 
-                    <table class="form-table" style="width: 100%; border-collapse: collapse;">
-                        <?php foreach ($supported_keys as $key => $label): 
-                            $val = isset($active_values[$key]) ? $active_values[$key] : '';
-                            $is_color = (strpos($key, 'ps_bg_') === 0 || strpos($key, 'ps_text_') === 0 || strpos($key, 'ps_accent') === 0);
-                            $type = ($key === 'cf_ts_secret_key' || $key === 'ps_secret_key') ? 'password' : ($is_color ? 'color' : 'text');
-                        ?>
-                            <tr>
-                                <th style="width: 250px; text-align: left; padding: 12px 10px; font-weight: 600; font-size: 13px; border-bottom: 1px solid #f0f0f1;">
-                                    <label for="<?php echo $key; ?>"><?php echo htmlspecialchars($label); ?></label>
-                                </th>
-                                <td style="padding: 12px 10px; border-bottom: 1px solid #f0f0f1;">
-                                    <?php if ($is_color): ?>
-                                        <input type="color" id="<?php echo $key; ?>" name="<?php echo $key; ?>" value="<?php echo htmlspecialchars($val ?: '#ffffff'); ?>">
-                                        <code style="margin-left: 10px; font-family: monospace; font-size: 12px; color: #555;"><?php echo htmlspecialchars($val); ?></code>
-                                    <?php else: ?>
-                                        <input type="<?php echo $type; ?>" id="<?php echo $key; ?>" name="<?php echo $key; ?>" value="<?php echo htmlspecialchars($val); ?>" size="50" style="padding: 5px;">
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </table>
+                    <?php foreach ($grouped_keys as $group_name => $keys): ?>
+                        <h3 style="background: #f7f7f7; padding: 8px 12px; font-size: 14px; margin-top: 25px; margin-bottom: 0; border: 1px solid #ccd0d4; border-bottom: none; border-radius: 4px 4px 0 0;"><?php echo htmlspecialchars($group_name); ?></h3>
+                        <table class="form-table" style="width: 100%; border-collapse: collapse; border: 1px solid #ccd0d4; margin-top: 0; margin-bottom: 20px; border-top: none;">
+                            <?php foreach ($keys as $key => $label): 
+                                $val = isset($active_values[$key]) ? $active_values[$key] : '';
+                                $is_color = (strpos($key, 'ps_bg_') === 0 || strpos($key, 'ps_text_') === 0 || strpos($key, 'ps_accent') === 0);
+                                $type = ($key === 'cf_ts_secret_key' || $key === 'ps_secret_key') ? 'password' : ($is_color ? 'color' : 'text');
+                            ?>
+                                <tr style="border-bottom: 1px solid #f0f0f1;">
+                                    <th style="width: 250px; text-align: left; padding: 12px 15px; font-weight: 600; font-size: 13px;">
+                                        <label for="<?php echo $key; ?>"><?php echo htmlspecialchars($label); ?></label>
+                                    </th>
+                                    <td style="padding: 12px 15px;">
+                                        <?php if ($is_color): ?>
+                                            <input type="color" id="<?php echo $key; ?>" name="<?php echo $key; ?>" value="<?php echo htmlspecialchars($val ?: '#ffffff'); ?>">
+                                            <code style="margin-left: 10px; font-family: monospace; font-size: 12px; color: #555;"><?php echo htmlspecialchars($val); ?></code>
+                                        <?php else: ?>
+                                            <input type="<?php echo $type; ?>" id="<?php echo $key; ?>" name="<?php echo $key; ?>" value="<?php echo htmlspecialchars($val); ?>" size="50" style="padding: 5px;">
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </table>
+                    <?php endforeach; ?>
                     
                     <p style="margin-top: 20px;">
                         <input type="submit" class="button button-primary" value="Save Profile Settings">
