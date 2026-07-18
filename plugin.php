@@ -245,43 +245,39 @@ function dsb_admin_page() {
     }
 
     ?>
-    <div id="wrap" style="max-width: 98%; width: 98%;">
-        <h2>Domain Profiles Manager</h2>
-        <p>Define settings per domain name. These profiles automatically override options for Turnstile, Public Shortener, and Logo Suite plugins dynamically based on the requested host.</p>
-        
-        <div style="display: flex; gap: 20px; margin-top: 20px;">
-            <!-- Profiles List / Sidebar -->
-            <div style="width: 250px; background: #fff; border: 1px solid #ccd0d4; padding: 15px; border-radius: 4px; box-shadow: 0 1px 1px rgba(0,0,0,.04); box-sizing: border-box;">
-                <h3 style="margin-top: 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 8px;">Active Profiles</h3>
-                <ul style="list-style: none; padding: 0; margin: 0 0 15px 0;">
+    <div style="display: flex; gap: 20px; margin-top: 10px; width: 100%;">
+        <!-- Profiles List / Sidebar -->
+        <div style="width: 250px; padding-right: 15px; box-sizing: border-box; border-right: 1px solid #ccd0d4;">
+            <h3 style="margin-top: 0; font-size: 14px; border-bottom: 1px solid #ccd0d4; padding-bottom: 8px;">Active Profiles</h3>
+            <ul style="list-style: none; padding: 0; margin: 0 0 15px 0;">
+                <li style="margin-bottom: 6px;">
+                    <a href="?page=domain_settings_bridge&edit_domain=default" 
+                       style="display: block; padding: 8px 12px; text-decoration: none; border-radius: 3px; font-weight: 600; <?php echo $active_domain === 'default' ? 'background: #0073aa; color: #fff;' : 'color: #0073aa;'; ?>">
+                        default (Fallback)
+                    </a>
+                </li>
+                <?php foreach ($configs as $domain => $settings): if ($domain === 'default') continue; ?>
                     <li style="margin-bottom: 6px;">
-                        <a href="?page=domain_settings_bridge&edit_domain=default" 
-                           style="display: block; padding: 8px 12px; text-decoration: none; border-radius: 3px; font-weight: 600; <?php echo $active_domain === 'default' ? 'background: #0073aa; color: #fff;' : 'color: #0073aa;'; ?>">
-                            default (Fallback)
+                        <a href="?page=domain_settings_bridge&edit_domain=<?php echo urlencode($domain); ?>" 
+                           style="display: block; padding: 8px 12px; text-decoration: none; border-radius: 3px; font-weight: 600; <?php echo $active_domain === $domain ? 'background: #0073aa; color: #fff;' : 'color: #0073aa;'; ?>">
+                            <?php echo htmlspecialchars($domain); ?>
                         </a>
                     </li>
-                    <?php foreach ($configs as $domain => $settings): if ($domain === 'default') continue; ?>
-                        <li style="margin-bottom: 6px;">
-                            <a href="?page=domain_settings_bridge&edit_domain=<?php echo urlencode($domain); ?>" 
-                               style="display: block; padding: 8px 12px; text-decoration: none; border-radius: 3px; font-weight: 600; <?php echo $active_domain === $domain ? 'background: #0073aa; color: #fff;' : 'color: #0073aa;'; ?>">
-                                <?php echo htmlspecialchars($domain); ?>
-                            </a>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-                <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
-                <form method="post" action="?page=domain_settings_bridge">
-                    <input type="hidden" name="nonce" value="<?php echo $nonce; ?>">
-                    <input type="hidden" name="dsb_action" value="save">
-                    <input type="text" name="domain_name" placeholder="e.g. short.domain.com" style="width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box;" required>
-                    <input type="submit" class="button" style="width: 100%; text-align: center;" value="Add New Profile">
-                </form>
-            </div>
-            
-            <!-- Profile Settings Form -->
-            <div style="flex: 1; background: #fff; border: 1px solid #ccd0d4; padding: 20px; border-radius: 4px; box-shadow: 0 1px 1px rgba(0,0,0,.04); box-sizing: border-box;">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccd0d4; padding-bottom: 10px; margin-bottom: 20px;">
-                    <h3 style="margin: 0; font-size: 16px;">Editing Profile: <span style="color:#0073aa;"><?php echo htmlspecialchars($active_domain); ?></span></h3>
+                <?php endforeach; ?>
+            </ul>
+            <hr style="border: 0; border-top: 1px solid #ccd0d4; margin: 15px 0;">
+            <form method="post" action="?page=domain_settings_bridge">
+                <input type="hidden" name="nonce" value="<?php echo $nonce; ?>">
+                <input type="hidden" name="dsb_action" value="save">
+                <input type="text" name="domain_name" placeholder="e.g. short.domain.com" style="width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box;" required>
+                <input type="submit" class="button" style="width: 100%; text-align: center;" value="Add New Profile">
+            </form>
+        </div>
+        
+        <!-- Profile Settings Form -->
+        <div style="flex: 1; box-sizing: border-box;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccd0d4; padding-bottom: 10px; margin-bottom: 20px;">
+                <h3 style="margin: 0; font-size: 16px;">Editing Profile: <span style="color:#0073aa;"><?php echo htmlspecialchars($active_domain); ?></span></h3>
                     <div style="display: flex; gap: 10px;">
                         <?php if ($active_domain !== 'default'): ?>
                             <button type="button" class="button" onclick="dsbResetProfile();" style="color: #b32d2e; border-color: #b32d2e;">Reset All Overrides</button>
@@ -374,7 +370,6 @@ function dsb_admin_page() {
                 </form>
             </div>
         </div>
-    </div>
 
     <script type="text/javascript">
         function dsbResetField(id) {
